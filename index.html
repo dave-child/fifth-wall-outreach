@@ -615,6 +615,9 @@ textarea.field { resize: vertical; min-height: 90px; line-height: 1.6; }
           <select class="filter-sel" id="fil-sector" onchange="renderProspects()">
             <option value="">All sectors</option>
           </select>
+          <select class="filter-sel" id="fil-owner" onchange="renderProspects()">
+            <option value="">All owners</option>
+          </select>
         </div>
         <button class="btn-primary" onclick="openProspectModal()">+ Add Prospect</button>
       </div>
@@ -626,6 +629,8 @@ textarea.field { resize: vertical; min-height: 90px; line-height: 1.6; }
               <th class="sortable" onclick="setSort('contact')">Contact</th>
               <th class="sortable" onclick="setSort('sector')">Sector</th>
               <th class="sortable" onclick="setSort('status')">Status</th>
+              <th class="sortable" onclick="setSort('owner')">Owner</th>
+              <th class="sortable" onclick="setSort('assigned_to')">Assigned to</th>
               <th class="sortable" onclick="setSort('next_date')">Next action</th>
               <th class="sortable" onclick="setSort('last_touched')">Last touched</th>
               <th></th>
@@ -744,6 +749,16 @@ textarea.field { resize: vertical; min-height: 90px; line-height: 1.6; }
         <input class="field" id="f-nextdate" type="date">
       </div>
     </div>
+    <div class="modal-row">
+      <div class="field-group">
+        <label class="field-label">Owner</label>
+        <select class="field" id="f-owner"></select>
+      </div>
+      <div class="field-group">
+        <label class="field-label">Assigned to (next action)</label>
+        <select class="field" id="f-assigned-to"></select>
+      </div>
+    </div>
     <div class="field-group">
       <label class="field-label">Notes</label>
       <textarea class="field" id="f-notes" placeholder="Latest update, what happened, next step…"></textarea>
@@ -825,6 +840,7 @@ let selectedScriptId = null;
 let allProspects = [];
 let allScripts = [];
 let allSectors = [];
+let allMembers = [];
 let sortCol = 'created_at';
 let sortDir = 'desc';
 
@@ -858,8 +874,8 @@ async function handleSession(session) {
 
 async function loadAll() {
   await loadSectors();
-  await Promise.all([loadProspects(), loadScripts()]);
-  if (currentMember?.role === 'admin') loadMembers();
+  await Promise.all([loadProspects(), loadScripts(), loadMembersData()]);
+  if (currentMember?.role === 'admin') renderMembersList();
   renderDashboard();
 }
 
@@ -962,12 +978,14 @@ function renderProspects() {
   const search = (document.getElementById('crm-search').value || '').toLowerCase();
   const stF = document.getElementById('fil-status').value;
   const scF = document.getElementById('fil-sector').value;
+  const owF = document.getElementById('fil-owner').value;
 
   const filtered = allProspects.filter(p => {
     const text = [p.company, p.contact, p.notes, p.email].join(' ').toLowerCase();
     return (!search || text.includes(search))
         && (!stF || p.status === stF)
-        && (!scF || p.sector === scF);
+        && (!scF || p.sector === scF)
+        && (!owF || p.owner === owF);
   });
 
   // Sort
@@ -999,7 +1017,7 @@ function renderProspects() {
 
   const tbody = document.getElementById('prospects-body');
   if (!filtered.length) {
-    tbody.innerHTML = `<tr><td colspan="7"><div class="empty"><div class="empty-icon">🔍</div><div class="empty-title">No prospects found</div></div></td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="9"><div class="empty"><div class="empty-icon">🔍</div><div class="empty-title">No prospects found</div></div></td></tr>`;
     return;
   }
   tbody.innerHTML = filtered.map(p => `
@@ -1011,6 +1029,8 @@ function renderProspects() {
       </td>
       <td><span class="sector-tag">${esc(p.sector||'')}</span></td>
       <td><span class="pill s-${p.status}">${p.status}</span></td>
+      <td class="td-date" style="font-size:11px;color:var(--text3)">${esc(p.owner||'—')}</td>
+      <td class="td-date" style="font-size:11px;color:var(--text3)">${esc(p.assigned_to||'—')}</td>
       <td class="td-date">${p.next_date||'—'}</td>
       <td class="td-date">${(p.last_touched||'').slice(0,10)||'—'}</td>
       <td>
@@ -1034,8 +1054,14 @@ function openProspectModal(p) {
   document.getElementById('f-phone').value    = p?.phone    || '';
   document.getElementById('f-notes').value    = p?.notes    || '';
   document.getElementById('f-status').value   = p?.status   || 'New';
-  document.getElementById('f-sector').value   = p?.sector   || 'Jewellery & Watches';
   document.getElementById('f-nextdate').value = p?.next_date|| '';
+  populateMemberDropdowns();
+  // After populating, set saved values (overrides defaults)
+  if (p?.owner)       document.getElementById('f-owner').value       = p.owner;
+  if (p?.assigned_to) document.getElementById('f-assigned-to').value = p.assigned_to;
+  // Sector
+  populateSectorDropdowns();
+  if (p?.sector) document.getElementById('f-sector').value = p.sector;
   openModal('prospect-modal');
 }
 
@@ -1052,14 +1078,16 @@ async function saveProspect() {
 
   const payload = {
     company,
-    contact:      document.getElementById('f-contact').value.trim() || null,
-    role:         document.getElementById('f-role').value.trim()    || null,
-    email:        document.getElementById('f-email').value.trim()   || null,
-    phone:        document.getElementById('f-phone').value.trim()   || null,
+    contact:      document.getElementById('f-contact').value.trim()       || null,
+    role:         document.getElementById('f-role').value.trim()          || null,
+    email:        document.getElementById('f-email').value.trim()         || null,
+    phone:        document.getElementById('f-phone').value.trim()         || null,
     sector:       document.getElementById('f-sector').value,
     status:       document.getElementById('f-status').value,
-    next_date:    document.getElementById('f-nextdate').value       || null,
-    notes:        document.getElementById('f-notes').value.trim()   || null,
+    next_date:    document.getElementById('f-nextdate').value             || null,
+    notes:        document.getElementById('f-notes').value.trim()         || null,
+    owner:        document.getElementById('f-owner').value                || null,
+    assigned_to:  document.getElementById('f-assigned-to').value         || null,
     last_touched: new Date().toISOString().slice(0,10),
   };
 
@@ -1074,6 +1102,7 @@ async function saveProspect() {
   closeModal('prospect-modal');
   toast(editingProspectId ? 'Prospect updated' : 'Prospect added', 'success');
   await loadProspects();
+  renderDashboard();
 }
 
 async function deleteProspect(id) {
@@ -1228,10 +1257,37 @@ async function saveScript() {
 }
 
 // ── ADMIN ────────────────────────────────────────────────
-async function loadMembers() {
-  const { data, error } = await db.from('members').select('*').order('created_at');
+async function loadMembersData() {
+  const { data, error } = await db.from('members').select('*').order('name');
   if (error) return;
-  document.getElementById('members-list').innerHTML = (data||[]).map(m => `
+  allMembers = data || [];
+  populateMemberDropdowns();
+}
+
+function populateMemberDropdowns() {
+  const ids = ['f-owner', 'f-assigned-to', 'fil-owner'];
+  ids.forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const current = el.value;
+    const isFilter = id === 'fil-owner';
+    el.innerHTML = isFilter
+      ? '<option value="">All owners</option>'
+      : '<option value="">— unassigned —</option>';
+    allMembers.forEach(m => {
+      const opt = document.createElement('option');
+      opt.value = m.name; opt.textContent = m.name;
+      if (m.name === currentMember?.name && !isFilter && !current) opt.selected = true;
+      el.appendChild(opt);
+    });
+    if (current) el.value = current;
+  });
+}
+
+async function renderMembersList() {
+  const el = document.getElementById('members-list');
+  if (!el) return;
+  el.innerHTML = allMembers.map(m => `
     <div class="member-row">
       <div class="member-info">
         <div class="member-av">${m.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase()}</div>
@@ -1248,6 +1304,11 @@ async function loadMembers() {
         : ''}
     </div>
   `).join('');
+}
+
+async function loadMembers() {
+  await loadMembersData();
+  renderMembersList();
 }
 
 async function inviteMember() {
@@ -1418,7 +1479,12 @@ function renderActionQueue() {
       return reason ? { ...p, reason, priority } : null;
     })
     .filter(Boolean)
-    .sort((a,b) => a.priority - b.priority)
+    .sort((a,b) => {
+      // Current user's assigned items first, then by priority
+      const aMe = a.assigned_to === currentMember?.name ? 0 : 1;
+      const bMe = b.assigned_to === currentMember?.name ? 0 : 1;
+      return aMe - bMe || a.priority - b.priority;
+    })
     .slice(0, 8);
 
   const dotClass = p => p.priority === 1 ? 'urgent' : p.priority === 2 ? 'due' : 'new';
@@ -1433,7 +1499,7 @@ function renderActionQueue() {
             <div class="queue-dot ${dotClass(p)}"></div>
             <div>
               <div class="queue-company">${esc(p.company)}${p.contact ? ` — ${esc(p.contact)}` : ''}</div>
-              <div class="queue-reason">${p.reason}${p.sector ? ` · ${esc(p.sector)}` : ''}</div>
+              <div class="queue-reason">${p.reason}${p.sector ? ` · ${esc(p.sector)}` : ''}${p.assigned_to ? ` · <strong style="color:var(--text2)">${esc(p.assigned_to)}</strong>` : ''}</div>
             </div>
           </div>
           <div class="queue-right">
