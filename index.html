@@ -504,6 +504,102 @@ textarea.field { resize: vertical; min-height: 90px; line-height: 1.6; }
   color: var(--text3); font-size: 12px; padding: 8px 0; line-height: 1.7;
 }
 
+/* RESEARCH OVERLAY */
+#research-overlay {
+  display: none;
+  position: fixed; inset: 0; z-index: 200;
+  background: var(--bg);
+  flex-direction: column;
+  overflow-y: auto;
+}
+#research-overlay.open { display: flex; }
+.research-wrap {
+  max-width: 720px; width: 100%; margin: 0 auto;
+  padding: 40px 24px 60px; display: flex; flex-direction: column; gap: 28px;
+}
+.research-header {
+  display: flex; justify-content: space-between; align-items: flex-start;
+}
+.research-title {
+  font-size: 22px; font-weight: 700; color: var(--text); margin-bottom: 4px;
+}
+.research-subtitle { font-size: 13px; color: var(--text3); }
+.research-steps {
+  display: flex; gap: 8px; align-items: center;
+}
+.rs-step {
+  display: flex; align-items: center; gap: 8px; font-size: 11px;
+  color: var(--text3); font-weight: 500;
+}
+.rs-step-dot {
+  width: 24px; height: 24px; border-radius: 50%;
+  border: 2px solid var(--border2);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 700; color: var(--text3);
+  flex-shrink: 0;
+}
+.rs-step.active .rs-step-dot {
+  background: var(--accent); border-color: var(--accent); color: #fff;
+}
+.rs-step.done .rs-step-dot {
+  background: var(--green); border-color: var(--green); color: #fff;
+}
+.rs-step.active { color: var(--text); }
+.rs-step.done   { color: var(--green); }
+.rs-divider {
+  flex: 1; height: 1px; background: var(--border); max-width: 40px;
+}
+.research-body { display: flex; flex-direction: column; gap: 20px; }
+.rs-card {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: var(--r); padding: 22px;
+}
+.rs-card-title {
+  font-size: 16px; font-weight: 600; color: var(--text); margin-bottom: 6px;
+}
+.rs-card-desc {
+  font-size: 13px; color: var(--text2); line-height: 1.7; margin-bottom: 18px;
+}
+.rs-checklist { display: flex; flex-direction: column; gap: 10px; }
+.rs-check {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 12px 14px; border-radius: var(--r-sm);
+  background: var(--bg3); border: 1px solid var(--border);
+  cursor: pointer; transition: border-color 0.15s;
+}
+.rs-check:hover { border-color: var(--border2); }
+.rs-check.checked { border-color: rgba(62,207,142,0.4); background: rgba(62,207,142,0.05); }
+.rs-check-box {
+  width: 18px; height: 18px; border-radius: 4px;
+  border: 2px solid var(--border2); flex-shrink: 0; margin-top: 1px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; transition: all 0.15s;
+}
+.rs-check.checked .rs-check-box {
+  background: var(--green); border-color: var(--green); color: #fff;
+}
+.rs-check-text { font-size: 13px; color: var(--text2); line-height: 1.6; }
+.rs-check.checked .rs-check-text { color: var(--text); }
+.rs-tip {
+  background: rgba(79,142,247,0.07); border: 1px solid rgba(79,142,247,0.2);
+  border-radius: var(--r-sm); padding: 12px 16px;
+  font-size: 12px; color: var(--text2); line-height: 1.7;
+}
+.rs-tip strong { color: var(--accent); }
+.rs-search-links { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.rs-link {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 12px; border-radius: var(--r-sm);
+  background: var(--bg3); border: 1px solid var(--border2);
+  font-size: 11px; color: var(--accent); text-decoration: none;
+  transition: background 0.15s;
+}
+.rs-link:hover { background: var(--bg4); }
+.research-nav {
+  display: flex; justify-content: space-between; align-items: center;
+  padding-top: 8px;
+}
+
 /* TOAST */
 .toast {
   position: fixed; bottom: 24px; right: 24px;
@@ -598,6 +694,9 @@ textarea.field { resize: vertical; min-height: 90px; line-height: 1.6; }
         <!-- COLD ALERTS -->
         <div class="dash-card dash-wide" id="dash-cold"></div>
 
+      </div>
+      <div style="padding:0 24px 24px;display:flex;justify-content:flex-end">
+        <button class="btn-primary" style="padding:12px 24px;font-size:13px" onclick="startResearch()">🔍 Start Research Session</button>
       </div>
     </div>
 
@@ -819,6 +918,31 @@ textarea.field { resize: vertical; min-height: 90px; line-height: 1.6; }
     <button class="btn-close-fs" onclick="closeFS()">✕ Close</button>
   </div>
   <div class="fs-grid" id="fs-grid"></div>
+</div>
+
+<!-- RESEARCH OVERLAY -->
+<div id="research-overlay">
+  <div class="research-wrap">
+    <div class="research-header">
+      <div>
+        <div class="research-title">Research Session</div>
+        <div class="research-subtitle" id="rs-subtitle">Find a new prospect step by step</div>
+      </div>
+      <button class="btn-close-fs" onclick="closeResearch()">✕ Close</button>
+    </div>
+
+    <!-- STEP PROGRESS -->
+    <div class="research-steps" id="rs-steps"></div>
+
+    <!-- STEP CONTENT -->
+    <div class="research-body" id="rs-body"></div>
+
+    <!-- NAV BUTTONS -->
+    <div class="research-nav">
+      <button class="btn-cancel" id="rs-back" onclick="researchBack()">← Back</button>
+      <button class="btn-primary" id="rs-next" onclick="researchNext()">Next →</button>
+    </div>
+  </div>
 </div>
 
 <!-- TOAST -->
@@ -1538,6 +1662,381 @@ function renderColdAlerts() {
           </div>
         </div>`).join('')
     }`;
+}
+
+// ── RESEARCH MODE ────────────────────────────────────────
+const RESEARCH_STEPS = [
+  { label: 'Sector' },
+  { label: 'Brand' },
+  { label: 'Qualify' },
+  { label: 'Contact' },
+  { label: 'Intel' },
+  { label: 'Save' },
+];
+
+let rsStep = 0;
+let rsData = {};
+
+function startResearch() {
+  rsStep = 0;
+  rsData = {
+    sector: allSectors[0]?.name || '',
+    brand: '',
+    qualChecks: {},
+    contact: '', role: '', email: '', phone: '',
+    intel: '', angle: '',
+    owner: currentMember?.name || '',
+    assigned_to: currentMember?.name || '',
+  };
+  document.getElementById('research-overlay').classList.add('open');
+  renderResearchStep();
+}
+
+function closeResearch() {
+  document.getElementById('research-overlay').classList.remove('open');
+}
+
+function renderResearchProgress() {
+  document.getElementById('rs-steps').innerHTML = RESEARCH_STEPS.map((s, i) => `
+    ${i > 0 ? '<div class="rs-divider"></div>' : ''}
+    <div class="rs-step ${i === rsStep ? 'active' : i < rsStep ? 'done' : ''}">
+      <div class="rs-step-dot">${i < rsStep ? '✓' : i + 1}</div>
+      <span>${s.label}</span>
+    </div>
+  `).join('');
+}
+
+function renderResearchStep() {
+  renderResearchProgress();
+  document.getElementById('rs-subtitle').textContent = `Step ${rsStep + 1} of ${RESEARCH_STEPS.length} — ${RESEARCH_STEPS[rsStep].label}`;
+  document.getElementById('rs-back').style.visibility = rsStep === 0 ? 'hidden' : 'visible';
+  document.getElementById('rs-next').textContent = rsStep === RESEARCH_STEPS.length - 1 ? '💾 Save to CRM' : 'Next →';
+
+  const body = document.getElementById('rs-body');
+
+  if (rsStep === 0) {
+    // SECTOR
+    body.innerHTML = `
+      <div class="rs-card">
+        <div class="rs-card-title">Which sector are you researching today?</div>
+        <div class="rs-card-desc">Focus on one sector per session. Depth beats breadth — you'll find better prospects and write better outreach.</div>
+        <div class="field-group">
+          <label class="field-label">Sector</label>
+          <select class="field" id="rs-sector-sel">
+            ${allSectors.map(s => `<option ${s.name === rsData.sector ? 'selected' : ''}>${esc(s.name)}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+      <div class="rs-card">
+        <div class="rs-card-title">What to look for in this sector</div>
+        <div class="rs-checklist">
+          ${sectorHints(rsData.sector).map(h => `<div class="rs-check checked"><div class="rs-check-box">✓</div><div class="rs-check-text">${h}</div></div>`).join('')}
+        </div>
+      </div>`;
+
+    document.getElementById('rs-sector-sel').onchange = function() {
+      rsData.sector = this.value;
+      renderResearchStep();
+    };
+  }
+
+  else if (rsStep === 1) {
+    // BRAND DISCOVERY
+    const sector = rsData.sector;
+    body.innerHTML = `
+      <div class="rs-card">
+        <div class="rs-card-title">Find a brand to target</div>
+        <div class="rs-card-desc">Search for active brands in <strong style="color:var(--text)">${esc(sector)}</strong>. Look for ones with recent product launches, new campaigns, or a brand refresh — these signal active marketing budgets.</div>
+        <div class="rs-search-links">
+          <a class="rs-link" href="https://www.google.com/search?q=${encodeURIComponent(sector + ' brand new product launch 2024 2025')}" target="_blank">🔍 Google: recent launches</a>
+          <a class="rs-link" href="https://www.google.com/search?q=${encodeURIComponent(sector + ' TV advert campaign 2024 2025 UK')}" target="_blank">🔍 Google: recent campaigns</a>
+          <a class="rs-link" href="https://www.linkedin.com/search/results/companies/?keywords=${encodeURIComponent(sector)}" target="_blank">💼 LinkedIn: companies</a>
+          <a class="rs-link" href="https://www.instagram.com/explore/tags/${encodeURIComponent(sector.toLowerCase().replace(/\s/g,''))}" target="_blank">📸 Instagram: brand content</a>
+        </div>
+      </div>
+      <div class="rs-card">
+        <div class="rs-card-title">Brand found — enter details</div>
+        <div class="field-group">
+          <label class="field-label">Brand / company name *</label>
+          <input class="field" id="rs-brand" placeholder="e.g. Ninja" value="${esc(rsData.brand)}">
+        </div>
+        <div class="rs-tip" style="margin-top:12px">
+          <strong>Good signals:</strong> New product in last 6 months · Active on social · Running video ads · Premium positioning · UK marketing team
+        </div>
+      </div>`;
+  }
+
+  else if (rsStep === 2) {
+    // QUALIFY
+    const qualItems = [
+      { id: 'q1', text: 'They make or sell a physical product that benefits from visual storytelling' },
+      { id: 'q2', text: 'There\'s evidence they spend on video or photo production (ads, hero content, social)' },
+      { id: 'q3', text: 'They appear to have an in-house marketing team or commission agencies directly' },
+      { id: 'q4', text: 'They have UK presence or a UK marketing decision-maker' },
+      { id: 'q5', text: 'Their current content looks like it could be elevated — there\'s a clear upgrade opportunity' },
+    ];
+    body.innerHTML = `
+      <div class="rs-card">
+        <div class="rs-card-title">Is <strong style="color:var(--accent)">${esc(rsData.brand)}</strong> worth pursuing?</div>
+        <div class="rs-card-desc">Check off each signal you can confirm. Aim for at least 3 out of 5 before moving forward.</div>
+        <div class="rs-checklist">
+          ${qualItems.map(q => `
+            <div class="rs-check ${rsData.qualChecks[q.id] ? 'checked' : ''}" onclick="toggleQual('${q.id}', this)">
+              <div class="rs-check-box">${rsData.qualChecks[q.id] ? '✓' : ''}</div>
+              <div class="rs-check-text">${q.text}</div>
+            </div>`).join('')}
+        </div>
+      </div>
+      <div class="rs-card">
+        <div class="rs-card-title">Score</div>
+        <div id="rs-qual-score" style="font-size:32px;font-weight:700;color:${qualScore() >= 3 ? 'var(--green)' : 'var(--amber)'}">
+          ${qualScore()} / 5
+        </div>
+        <div style="font-size:12px;color:var(--text3);margin-top:6px">
+          ${qualScore() >= 4 ? '✓ Strong prospect — proceed with confidence' :
+            qualScore() === 3 ? '~ Worth pursuing — keep an eye out for more signals' :
+            '✗ Weak fit — consider finding a different brand first'}
+        </div>
+      </div>`;
+  }
+
+  else if (rsStep === 3) {
+    // CONTACT FINDER
+    body.innerHTML = `
+      <div class="rs-card">
+        <div class="rs-card-title">Find the right person at <strong style="color:var(--accent)">${esc(rsData.brand)}</strong></div>
+        <div class="rs-card-desc">You want someone who commissions or approves production spend. These are the titles to look for:</div>
+        <div class="rs-checklist" style="margin-bottom:16px">
+          ${['Creative Director', 'Head of Marketing', 'Senior Producer', 'Brand Director', 'Head of Content', 'Marketing Manager'].map(t => `
+            <div class="rs-check" style="cursor:default">
+              <div class="rs-check-box" style="border-color:var(--accent);color:var(--accent)">→</div>
+              <div class="rs-check-text">${t}</div>
+            </div>`).join('')}
+        </div>
+        <div class="rs-search-links">
+          <a class="rs-link" href="https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(rsData.brand + ' creative director')}" target="_blank">💼 LinkedIn: Creative Director</a>
+          <a class="rs-link" href="https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(rsData.brand + ' head of marketing')}" target="_blank">💼 LinkedIn: Head of Marketing</a>
+          <a class="rs-link" href="https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(rsData.brand + ' producer')}" target="_blank">💼 LinkedIn: Producer</a>
+        </div>
+      </div>
+      <div class="rs-card">
+        <div class="rs-card-title">Contact details</div>
+        <div class="modal-row">
+          <div class="field-group">
+            <label class="field-label">Full name</label>
+            <input class="field" id="rs-contact" placeholder="e.g. Sarah Mitchell" value="${esc(rsData.contact)}">
+          </div>
+          <div class="field-group">
+            <label class="field-label">Job title / role</label>
+            <input class="field" id="rs-role" placeholder="e.g. Creative Director" value="${esc(rsData.role)}">
+          </div>
+        </div>
+        <div class="modal-row">
+          <div class="field-group">
+            <label class="field-label">Email (if found)</label>
+            <input class="field" id="rs-email" type="email" placeholder="sarah@brand.com" value="${esc(rsData.email)}">
+          </div>
+          <div class="field-group">
+            <label class="field-label">Phone (if found)</label>
+            <input class="field" id="rs-phone" placeholder="+44…" value="${esc(rsData.phone)}">
+          </div>
+        </div>
+        <div class="rs-tip">
+          <strong>Can't find an email?</strong> Try firstname@brand.com or firstname.lastname@brand.com. Tools like Hunter.io can help. A LinkedIn connection request is also a valid first move.
+        </div>
+      </div>`;
+  }
+
+  else if (rsStep === 4) {
+    // INTEL + OUTREACH ANGLE
+    body.innerHTML = `
+      <div class="rs-card">
+        <div class="rs-card-title">What did you find out about <strong style="color:var(--accent)">${esc(rsData.brand)}</strong>?</div>
+        <div class="rs-card-desc">Note anything useful — a recent campaign you saw, a product launch, a quote from their marketing team. This is what you'll reference in your first message to make it feel personal, not generic.</div>
+        <div class="field-group">
+          <label class="field-label">Intel notes</label>
+          <textarea class="field" id="rs-intel" rows="4" placeholder="e.g. Just launched the Ninja Creami 2.0 — heavy push on social, lots of aspirational kitchen content. Current videos look product-first, no lifestyle environment. Could benefit from a VP kitchen set build.">${esc(rsData.intel)}</textarea>
+        </div>
+      </div>
+      <div class="rs-card">
+        <div class="rs-card-title">Outreach angle</div>
+        <div class="rs-card-desc">What's the one thing you'll lead with in your first message? Keep it specific to them — reference what you found above.</div>
+        <div class="field-group">
+          <label class="field-label">Opening angle / hook</label>
+          <input class="field" id="rs-angle" placeholder="e.g. Noticed the new Creami launch — the hero content could be elevated with a VP kitchen environment build" value="${esc(rsData.angle)}">
+        </div>
+        <div class="rs-tip">
+          <strong>Good angles:</strong> Reference a specific campaign · Compliment then suggest an upgrade · Connect a recent launch to what VP/VFX makes possible · Keep it one sentence — the goal is curiosity, not a pitch
+        </div>
+      </div>
+      <div class="rs-card">
+        <div class="rs-card-title">Assign this prospect</div>
+        <div class="modal-row">
+          <div class="field-group">
+            <label class="field-label">Owner</label>
+            <select class="field" id="rs-owner">
+              <option value="">— unassigned —</option>
+              ${allMembers.map(m => `<option value="${esc(m.name)}" ${m.name === rsData.owner ? 'selected' : ''}>${esc(m.name)}</option>`).join('')}
+            </select>
+          </div>
+          <div class="field-group">
+            <label class="field-label">First contact assigned to</label>
+            <select class="field" id="rs-assigned">
+              <option value="">— unassigned —</option>
+              ${allMembers.map(m => `<option value="${esc(m.name)}" ${m.name === rsData.assigned_to ? 'selected' : ''}>${esc(m.name)}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  else if (rsStep === 5) {
+    // REVIEW + SAVE
+    body.innerHTML = `
+      <div class="rs-card">
+        <div class="rs-card-title">Ready to save</div>
+        <div class="rs-card-desc">Review the details below. This will be added to your Prospects CRM with status <strong style="color:var(--text)">New</strong>.</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px 24px;margin-top:4px">
+          ${[
+            ['Company', rsData.brand],
+            ['Sector', rsData.sector],
+            ['Contact', rsData.contact || '—'],
+            ['Role', rsData.role || '—'],
+            ['Email', rsData.email || '—'],
+            ['Phone', rsData.phone || '—'],
+            ['Owner', rsData.owner || '—'],
+            ['Assigned to', rsData.assigned_to || '—'],
+          ].map(([k,v]) => `
+            <div>
+              <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:3px">${k}</div>
+              <div style="font-size:13px;color:var(--text)">${esc(v)}</div>
+            </div>`).join('')}
+        </div>
+      </div>
+      ${rsData.intel ? `
+      <div class="rs-card">
+        <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:8px">Intel / notes</div>
+        <div style="font-size:13px;color:var(--text2);line-height:1.7">${esc(rsData.intel)}</div>
+        ${rsData.angle ? `<div style="margin-top:12px;font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:6px">Outreach angle</div>
+        <div style="font-size:13px;color:var(--accent)">${esc(rsData.angle)}</div>` : ''}
+      </div>` : ''}`;
+  }
+}
+
+function sectorHints(sector) {
+  const s = (sector || '').toLowerCase();
+  if (s.includes('white') || s.includes('kitchen') || s.includes('domestic') || s.includes('appli')) {
+    return [
+      'Look for brands launching new products in 2024–25 (air fryers, mixers, coffee machines)',
+      'Target premium and lifestyle-positioned brands — Ninja, Sage, KitchenAid, De\'Longhi, Smeg',
+      'Find brands running TV or YouTube hero campaigns — these have production budgets',
+      'Virtual production is ideal for kitchen set builds — consistent lighting, infinite set variations',
+    ];
+  }
+  if (s.includes('jewel') || s.includes('watch')) {
+    return [
+      'Look for watch and jewellery brands with new collections or seasonal campaigns',
+      'Target brands that shoot hero product content — pack shots, lifestyle, campaign imagery',
+      'VFX and CGI are widely used in this sector — position Fifth Wall as production-ready',
+      'Find brands that are elevating their digital/social presence',
+    ];
+  }
+  if (s.includes('drink')) {
+    return [
+      'Look for drinks brands with new product launches or seasonal pushes',
+      'Target premium spirits, soft drinks, and functional drinks — high creative spend',
+      'Virtual production suits liquid and product hero shots — controlled environment',
+      'Find brands running TV, online video, or festival/event campaigns',
+    ];
+  }
+  return [
+    'Look for brands with recent product launches or campaign activity',
+    'Target brands that commission video or photo production directly',
+    'Find brands with active social presence — signals ongoing creative spend',
+    'Look for signs of a brand refresh or elevated positioning',
+  ];
+}
+
+function toggleQual(id, el) {
+  rsData.qualChecks[id] = !rsData.qualChecks[id];
+  el.classList.toggle('checked', rsData.qualChecks[id]);
+  el.querySelector('.rs-check-box').textContent = rsData.qualChecks[id] ? '✓' : '';
+  const scoreEl = document.getElementById('rs-qual-score');
+  if (scoreEl) {
+    const s = qualScore();
+    scoreEl.textContent = s + ' / 5';
+    scoreEl.style.color = s >= 3 ? 'var(--green)' : 'var(--amber)';
+    scoreEl.nextElementSibling.textContent =
+      s >= 4 ? '✓ Strong prospect — proceed with confidence' :
+      s === 3 ? '~ Worth pursuing — keep an eye out for more signals' :
+               '✗ Weak fit — consider finding a different brand first';
+  }
+}
+
+function qualScore() {
+  return Object.values(rsData.qualChecks).filter(Boolean).length;
+}
+
+function researchBack() {
+  if (rsStep > 0) { rsStep--; renderResearchStep(); }
+}
+
+function researchNext() {
+  // Capture current step inputs before advancing
+  if (rsStep === 1) {
+    const b = document.getElementById('rs-brand');
+    if (!b?.value.trim()) { toast('Enter a brand name to continue', 'error'); return; }
+    rsData.brand = b.value.trim();
+  }
+  if (rsStep === 2 && qualScore() < 2) {
+    if (!confirm('This prospect scores less than 2/5. Are you sure you want to continue?')) return;
+  }
+  if (rsStep === 3) {
+    rsData.contact = document.getElementById('rs-contact')?.value.trim() || '';
+    rsData.role    = document.getElementById('rs-role')?.value.trim()    || '';
+    rsData.email   = document.getElementById('rs-email')?.value.trim()   || '';
+    rsData.phone   = document.getElementById('rs-phone')?.value.trim()   || '';
+  }
+  if (rsStep === 4) {
+    rsData.intel       = document.getElementById('rs-intel')?.value.trim()  || '';
+    rsData.angle       = document.getElementById('rs-angle')?.value.trim()  || '';
+    rsData.owner       = document.getElementById('rs-owner')?.value         || '';
+    rsData.assigned_to = document.getElementById('rs-assigned')?.value      || '';
+  }
+  if (rsStep === RESEARCH_STEPS.length - 1) {
+    saveResearch(); return;
+  }
+  rsStep++;
+  renderResearchStep();
+}
+
+async function saveResearch() {
+  if (!rsData.brand) { toast('Brand name is required', 'error'); return; }
+  const notes = [
+    rsData.intel,
+    rsData.angle ? `Outreach angle: ${rsData.angle}` : ''
+  ].filter(Boolean).join('\n\n');
+
+  const payload = {
+    company:     rsData.brand,
+    sector:      rsData.sector,
+    contact:     rsData.contact   || null,
+    role:        rsData.role      || null,
+    email:       rsData.email     || null,
+    phone:       rsData.phone     || null,
+    notes:       notes            || null,
+    owner:       rsData.owner     || null,
+    assigned_to: rsData.assigned_to || null,
+    status:      'New',
+    last_touched: new Date().toISOString().slice(0,10),
+  };
+
+  const { error } = await db.from('prospects').insert(payload);
+  if (error) { toast('Error saving: ' + error.message, 'error'); return; }
+  toast(`${rsData.brand} added to prospects ✓`, 'success');
+  closeResearch();
+  await loadProspects();
+  renderDashboard();
 }
 
 // ── UI HELPERS ───────────────────────────────────────────
