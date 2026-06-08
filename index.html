@@ -510,10 +510,6 @@ textarea.field { resize: vertical; min-height: 90px; line-height: 1.6; }
           </select>
           <select class="filter-sel" id="fil-sector" onchange="renderProspects()">
             <option value="">All sectors</option>
-            <option>Jewellery &amp; Watches</option>
-            <option>Drinks</option>
-            <option>White Goods</option>
-            <option>Other</option>
           </select>
         </div>
         <button class="btn-primary" onclick="openProspectModal()">+ Add Prospect</button>
@@ -575,6 +571,16 @@ textarea.field { resize: vertical; min-height: 90px; line-height: 1.6; }
           <div class="invite-note">Download your full prospect list as a CSV for Excel or external sharing.</div>
           <button class="btn-primary" onclick="exportCSV()">Download prospects CSV</button>
         </div>
+        <div class="admin-card">
+          <div class="admin-card-title">Manage sectors</div>
+          <div class="invite-note">Sectors appear in all script and prospect dropdowns.</div>
+          <div id="sectors-list" style="margin-bottom:16px"></div>
+          <div class="field-group">
+            <label class="field-label">New sector name</label>
+            <input class="field" id="new-sector-name" type="text" placeholder="e.g. Automotive">
+          </div>
+          <button class="btn-primary" onclick="addSector()">Add sector</button>
+        </div>
       </div>
     </div>
 
@@ -593,10 +599,6 @@ textarea.field { resize: vertical; min-height: 90px; line-height: 1.6; }
       <div class="field-group">
         <label class="field-label">Sector *</label>
         <select class="field" id="f-sector">
-          <option>Jewellery &amp; Watches</option>
-          <option>Drinks</option>
-          <option>White Goods</option>
-          <option>Other</option>
         </select>
       </div>
     </div>
@@ -647,7 +649,7 @@ textarea.field { resize: vertical; min-height: 90px; line-height: 1.6; }
 <!-- SCRIPT MODAL -->
 <div class="modal-overlay" id="script-modal">
   <div class="modal">
-    <div class="modal-title">Add sales script</div>
+    <div class="modal-title" id="script-modal-title">Add sales script</div>
     <div class="modal-row">
       <div class="field-group">
         <label class="field-label">Title *</label>
@@ -656,10 +658,6 @@ textarea.field { resize: vertical; min-height: 90px; line-height: 1.6; }
       <div class="field-group">
         <label class="field-label">Sector</label>
         <select class="field" id="sf-sector">
-          <option>Jewellery &amp; Watches</option>
-          <option>Drinks</option>
-          <option>White Goods</option>
-          <option>Generic</option>
         </select>
       </div>
     </div>
@@ -713,9 +711,11 @@ const db = createClient(SUPABASE_URL, SUPABASE_KEY);
 let currentUser = null;
 let currentMember = null;
 let editingProspectId = null;
+let editingScriptId = null;
 let selectedScriptId = null;
 let allProspects = [];
 let allScripts = [];
+let allSectors = [];
 
 // ── INIT ─────────────────────────────────────────────────
 async function init() {
@@ -746,6 +746,7 @@ async function handleSession(session) {
 }
 
 async function loadAll() {
+  await loadSectors();
   await Promise.all([loadProspects(), loadScripts()]);
   if (currentMember?.role === 'admin') loadMembers();
 }
@@ -763,6 +764,68 @@ async function signOut() {
   await db.auth.signOut();
   currentUser = null; currentMember = null;
   show('auth-screen');
+}
+
+// ── SECTORS ──────────────────────────────────────────────
+async function loadSectors() {
+  const { data, error } = await db.from('sectors').select('*').order('name');
+  if (error) { toast('Error loading sectors', 'error'); return; }
+  allSectors = data || [];
+  populateSectorDropdowns();
+}
+
+function populateSectorDropdowns() {
+  const ids = ['f-sector', 'sf-sector', 'fil-sector'];
+  ids.forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const current = el.value;
+    const isFilter = id === 'fil-sector';
+    el.innerHTML = isFilter ? '<option value="">All sectors</option>' : '';
+    allSectors.forEach(s => {
+      const opt = document.createElement('option');
+      opt.value = s.name; opt.textContent = s.name;
+      el.appendChild(opt);
+    });
+    if (current) el.value = current;
+  });
+}
+
+async function addSector() {
+  const input = document.getElementById('new-sector-name');
+  const name = input.value.trim();
+  if (!name) { toast('Enter a sector name', 'error'); return; }
+  const { error } = await db.from('sectors').insert({ name });
+  if (error) {
+    toast(error.code === '23505' ? 'Sector already exists' : 'Error: ' + error.message, 'error');
+    return;
+  }
+  input.value = '';
+  toast(`"${name}" added`, 'success');
+  await loadSectors();
+  renderSectorsList();
+}
+
+async function deleteSector(id, name) {
+  if (!confirm(`Remove sector "${name}"? Existing prospects/scripts won't be affected.`)) return;
+  const { error } = await db.from('sectors').delete().eq('id', id);
+  if (error) { toast('Error removing sector', 'error'); return; }
+  toast('Sector removed', 'success');
+  await loadSectors();
+  renderSectorsList();
+}
+
+function renderSectorsList() {
+  const el = document.getElementById('sectors-list');
+  if (!el) return;
+  el.innerHTML = allSectors.map(s => `
+    <div class="member-row">
+      <div class="member-info">
+        <div style="font-size:13px;font-weight:500">${esc(s.name)}</div>
+      </div>
+      <button class="btn-sm danger" onclick="deleteSector('${s.id}','${esc(s.name)}')">Remove</button>
+    </div>
+  `).join('') || '<div style="color:var(--text3);font-size:12px;padding:8px 0">No sectors yet</div>';
 }
 
 // ── PROSPECTS ────────────────────────────────────────────
@@ -922,7 +985,11 @@ function selectScript(id) {
         <div class="script-title">${esc(s.title)}</div>
         <div class="script-meta">${esc(s.sector)} · ${esc(s.stage)}</div>
       </div>
-      <button class="btn-fs" onclick="openFS('${id}')">⛶ Full screen</button>
+      <div style="display:flex;gap:8px;align-items:center;flex-shrink:0">
+        <button class="btn-fs" onclick="editScript('${id}')">✏ Edit</button>
+        <button class="btn-fs" style="color:var(--red);border-color:rgba(229,83,75,0.3)" onclick="deleteScript('${id}')">✕ Delete</button>
+        <button class="btn-fs" onclick="openFS('${id}')">⛶ Full screen</button>
+      </div>
     </div>
     <div class="script-body">${renderBlocks(blocks, 'script')}</div>
   `;
@@ -967,28 +1034,58 @@ function closeFS() {
   document.getElementById('fs-overlay').classList.remove('open');
 }
 
-function openScriptModal() {
-  document.getElementById('sf-title').value   = '';
-  document.getElementById('sf-content').value = '';
-  document.getElementById('sf-sector').value  = 'Jewellery & Watches';
-  document.getElementById('sf-stage').value   = 'Intro call';
+function openScriptModal(s) {
+  editingScriptId = s ? s.id : null;
+  document.getElementById('script-modal-title').textContent = s ? 'Edit script' : 'Add sales script';
+  document.getElementById('sf-title').value   = s?.title   || '';
+  document.getElementById('sf-content').value = s?.content?.raw || '';
+  document.getElementById('sf-stage').value   = s?.stage   || 'Intro call';
+  populateSectorDropdowns();
+  if (s?.sector) document.getElementById('sf-sector').value = s.sector;
   openModal('script-modal');
+}
+
+function editScript(id) {
+  const s = allScripts.find(x => x.id === id);
+  if (s) openScriptModal(s);
+}
+
+async function deleteScript(id) {
+  if (!confirm('Delete this script? This cannot be undone.')) return;
+  const { error } = await db.from('scripts').delete().eq('id', id);
+  if (error) { toast('Error deleting script', 'error'); return; }
+  selectedScriptId = null;
+  document.getElementById('script-main').innerHTML = `
+    <div class="empty" style="margin:auto">
+      <div class="empty-icon">📋</div>
+      <div class="empty-title">Select a script from the sidebar</div>
+    </div>`;
+  toast('Script deleted', 'success');
+  await loadScripts();
 }
 
 async function saveScript() {
   const title = document.getElementById('sf-title').value.trim();
   if (!title) { toast('Title is required', 'error'); return; }
   const raw = document.getElementById('sf-content').value.trim();
-  const { error } = await db.from('scripts').insert({
+  const payload = {
     title,
     sector:  document.getElementById('sf-sector').value,
     stage:   document.getElementById('sf-stage').value,
     content: { raw }
-  });
+  };
+  let error;
+  if (editingScriptId) {
+    ({ error } = await db.from('scripts').update(payload).eq('id', editingScriptId));
+  } else {
+    ({ error } = await db.from('scripts').insert(payload));
+  }
   if (error) { toast('Error saving script: ' + error.message, 'error'); return; }
   closeModal('script-modal');
-  toast('Script saved', 'success');
+  toast(editingScriptId ? 'Script updated' : 'Script saved', 'success');
+  editingScriptId = null;
   await loadScripts();
+  if (selectedScriptId) selectScript(selectedScriptId);
 }
 
 // ── ADMIN ────────────────────────────────────────────────
@@ -1064,7 +1161,7 @@ function switchTab(tab, el) {
   el.classList.add('active');
   document.getElementById('panel-'+tab).classList.add('active');
   if (tab === 'scripts') renderScriptsSidebar();
-  if (tab === 'admin') loadMembers();
+  if (tab === 'admin') { loadMembers(); renderSectorsList(); }
 }
 
 function openModal(id)  { document.getElementById(id).classList.add('open'); }
